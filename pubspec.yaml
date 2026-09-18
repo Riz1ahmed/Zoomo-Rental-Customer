@@ -1,0 +1,58 @@
+name: ebike_customer
+description: Customer app for e-bike rental
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.6
+  firebase_core: ^3.6.0
+  cloud_firestore: ^5.4.4
+  firebase_storage: ^12.3.4
+  firebase_messaging: ^15.1.4
+  file_picker: ^13.1.0
+  intl: ^0.19.0
+  shared_preferences: ^2.3.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+  flutter_launcher_icons: ^0.14.4
+
+flutter:
+  uses-material-design: true
+
+
+############################ - Update app icon - ################################
+flutter_launcher_icons:
+  image_path: "assets/image/logo/app_logo_round.png" #Default logo
+
+  #android,
+  android: "ic_launcher"
+  min_sdk_android: 21 # android min sdk min:16, default 21
+  # From android 12 logo use as adaptive(inside a box). If not set it manually,
+  # the default logo will be used, doesn't look good.
+  adaptive_icon_background: "#FFFFFF" #Background color for icon
+  adaptive_icon_foreground: "assets/image/logo/app_logo_square.png"
+
+  #iOS,
+  #  ios: true
+  #  image_path_ios: "assets/image/logo/app_logo_square.png"
+  #  remove_alpha_ios: true #Removes alpha channel for IOS icons
+
+  web:
+    generate: true
+    image_path: "assets/image/logo/app_logo.png"
+    background_color: "#FFFFFF"
+    theme_color: "#ababab"
+
+  #How to,
+  #---# How to change app logo:
+  #---# 1. Replace the 'image_path' logo.
+  #---# 2. Run this command to build app icon:
+  #---#      flutter pub run flutter_launcher_icons

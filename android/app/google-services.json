@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "996921107284",
+    "project_id": "zoomo-bike-rental",
+    "storage_bucket": "zoomo-bike-rental.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:996921107284:android:6008ae529459e316971ec1",
+        "android_client_info": {
+          "package_name": "com.example.ebike_customer"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBbGooOplStWW6z9-6lChIlB3ARKhizCak"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:996921107284:android:676584f31f3353fe971ec1",
+        "android_client_info": {
+          "package_name": "com.zoomo_rental.husain"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBbGooOplStWW6z9-6lChIlB3ARKhizCak"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
