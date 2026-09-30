@@ -1,4 +1,6 @@
 import 'dart:io';
+import 'package:ebike_customer/helper.dart';
+import 'package:ebike_customer/screens/ImageUtil.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import '../models/client_model.dart';
@@ -10,6 +12,7 @@ import 'login_screen.dart';
 
 class InfoFormScreen extends StatefulWidget {
   final ClientModel client;
+
   const InfoFormScreen({super.key, required this.client});
 
   @override
@@ -22,11 +25,14 @@ class _InfoFormScreenState extends State<InfoFormScreen> {
   final _storage = StorageService();
   bool _saving = false;
 
-  late final _fullNameCtrl = TextEditingController(text: widget.client.fullName);
+  late final _fullNameCtrl =
+      TextEditingController(text: widget.client.fullName);
   late final _phoneCtrl = TextEditingController(text: widget.client.phone);
   late final _addressCtrl = TextEditingController(text: widget.client.address);
-  late final _referrerNameCtrl = TextEditingController(text: widget.client.referrerName);
-  late final _referrerPhoneCtrl = TextEditingController(text: widget.client.referrerPhone);
+  late final _referrerNameCtrl =
+      TextEditingController(text: widget.client.referrerName);
+  late final _referrerPhoneCtrl =
+      TextEditingController(text: widget.client.referrerPhone);
 
   // Note: bike number, battery numbers, and rental amount stay out of this
   // form on purpose — only the admin sets those.
@@ -38,70 +44,50 @@ class _InfoFormScreenState extends State<InfoFormScreen> {
   Future<File?> _pickFile() async {
     final result = await FilePicker.pickFiles(
       type: FileType.custom,
-      allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png'],
+      allowedExtensions: ['jpg', 'jpeg', 'png'],
     );
     if (result == null || result.single.path == null) return null;
     final file = File(result.single.path!);
-    const maxBytes = 800 * 1024; // 800 KB
-    try {
-      final len = await file.length();
-      if (len > maxBytes) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Selected file is too large. Maximum 800 KB allowed.')),
-          );
-        }
-        return null;
-      }
-    } catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not read selected file. Please try another file.')),
-        );
-      }
-      return null;
-    }
     return file;
+  }
+
+  Future<String> _uploadDocumentForClient({
+    required String clientId,
+    required String docType,
+    required File file,
+  }) async {
+    final preparedFile =
+        await ImageUtil.prepareDocumentForUpload(file);
+    try {
+      return await _storage.uploadDocument(
+          clientId: clientId, docType: docType, file: preparedFile);
+    } finally {
+      if (preparedFile.path != file.path && await preparedFile.exists()) {
+        await preparedFile.delete();
+      }
+    }
   }
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
-    if (_passportFile == null || _recepisseFile == null || _domicileFile == null) {
+    if (_passportFile == null ||
+        _recepisseFile == null ||
+        _domicileFile == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('All three documents are required.')),
       );
       return;
     }
 
-    // Enforce max file size (safety check before uploading)
-    const maxBytes = 800 * 1024; // 800 KB
-    try {
-      final pLen = await _passportFile!.length();
-      final rLen = await _recepisseFile!.length();
-      final dLen = await _domicileFile!.length();
-      if (pLen > maxBytes || rLen > maxBytes || dLen > maxBytes) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Each document must be at most 800 KB. Please choose smaller files.')),
-          );
-        }
-        return;
-      }
-    } catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not read file sizes. Please try selecting the files again.')),
-        );
-      }
-      return;
-    }
-
     setState(() => _saving = true);
     try {
       final clientId = widget.client.id;
-      final passportUrl = await _storage.uploadDocument(clientId: clientId, docType: 'passport', file: _passportFile!);
-      final recepisseUrl = await _storage.uploadDocument(clientId: clientId, docType: 'recepisse', file: _recepisseFile!);
-      final domicileUrl = await _storage.uploadDocument(clientId: clientId, docType: 'domicile', file: _domicileFile!);
+      final passportUrl = await _uploadDocumentForClient(
+          clientId: clientId, docType: 'passport', file: _passportFile!);
+      final recepisseUrl = await _uploadDocumentForClient(
+          clientId: clientId, docType: 'recepisse', file: _recepisseFile!);
+      final domicileUrl = await _uploadDocumentForClient(
+          clientId: clientId, docType: 'domicile', file: _domicileFile!);
 
       await _firestore.submitInfo(clientId, {
         'fullName': _fullNameCtrl.text.trim(),
@@ -117,7 +103,8 @@ class _InfoFormScreenState extends State<InfoFormScreen> {
       // and will swap to the "pending confirmation" screen automatically.
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Error: $e')));
       setState(() => _saving = false);
     }
   }
@@ -135,21 +122,30 @@ class _InfoFormScreenState extends State<InfoFormScreen> {
         decoration: BoxDecoration(
           color: AppColors.surfaceHigh,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: file != null ? AppColors.primary : AppColors.border),
+          border: Border.all(
+              color: file != null ? AppColors.primary : AppColors.border),
         ),
         child: Row(
           children: [
-            Icon(file != null ? Icons.check_circle : Icons.upload_file, color: file != null ? AppColors.primary : AppColors.textSecondary),
+            Icon(file != null ? Icons.check_circle : Icons.upload_file,
+                color:
+                    file != null ? AppColors.primary : AppColors.textSecondary),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(label, style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600)),
+                  Text(label,
+                      style: const TextStyle(
+                          color: AppColors.textPrimary,
+                          fontWeight: FontWeight.w600)),
                   const SizedBox(height: 2),
                   Text(
-                    file != null ? file.path.split('/').last : 'Select a PDF or image',
-                    style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                    file != null
+                        ? file.path.split('/').last
+                        : 'Select a Image',
+                    style: const TextStyle(
+                        color: AppColors.textSecondary, fontSize: 12),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ],
@@ -161,19 +157,22 @@ class _InfoFormScreenState extends State<InfoFormScreen> {
     );
   }
 
-
   Future<void> _logout(BuildContext context) async {
     await Session.instance.logout();
     if (!context.mounted) return;
-    Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => const LoginScreen()));
+    Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const LoginScreen()));
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-          title: const Text('Your Information'),
-        actions: [IconButton(onPressed: () => _logout(context), icon: const Icon(Icons.logout))],
+        title: const Text('Your Information'),
+        actions: [
+          IconButton(
+              onPressed: () => _logout(context), icon: const Icon(Icons.logout))
+        ],
       ),
       body: Form(
         key: _formKey,
@@ -181,38 +180,44 @@ class _InfoFormScreenState extends State<InfoFormScreen> {
           padding: const EdgeInsets.all(16),
           children: [
             const Text(
-              'Please provide the following information before starting your rental. After you submit, the admin will confirm and your dashboard will be activated.',
+              'Please provide the following information before starting your rental. '
+              'After you submit, the admin will confirm and your dashboard will be activated.',
               style: TextStyle(color: AppColors.textSecondary),
             ),
             const SizedBox(height: 20),
             TextFormField(
               controller: _fullNameCtrl,
               decoration: const InputDecoration(labelText: 'Full Name'),
-              validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
+              validator: (v) =>
+                  (v == null || v.trim().isEmpty) ? 'Required' : null,
             ),
             const SizedBox(height: 12),
             TextFormField(
               controller: _phoneCtrl,
               decoration: const InputDecoration(labelText: 'Phone Number'),
               keyboardType: TextInputType.phone,
-              validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
+              validator: (v) =>
+                  (v == null || v.trim().isEmpty) ? 'Required' : null,
             ),
             const SizedBox(height: 12),
             TextFormField(
               controller: _addressCtrl,
-              decoration: const InputDecoration(labelText: 'Full Address'),
+              decoration: const InputDecoration(labelText: 'Current Address'),
               maxLines: 2,
-              validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
+              validator: (v) =>
+                  (v == null || v.trim().isEmpty) ? 'Required' : null,
             ),
             const SizedBox(height: 12),
             TextFormField(
               controller: _referrerNameCtrl,
-              decoration: const InputDecoration(labelText: 'Referer Full Name'),
+              decoration:
+                  const InputDecoration(labelText: 'Referer Name (Optional)'),
             ),
             const SizedBox(height: 12),
             TextFormField(
               controller: _referrerPhoneCtrl,
-              decoration: const InputDecoration(labelText: 'Referer Phone Number'),
+              decoration: const InputDecoration(
+                  labelText: 'Referer Phone Number (Optional)'),
               keyboardType: TextInputType.phone,
             ),
             const SizedBox(height: 24),
@@ -248,7 +253,11 @@ class _InfoFormScreenState extends State<InfoFormScreen> {
             ElevatedButton(
               onPressed: _saving ? null : _submit,
               child: _saving
-                  ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black))
+                  ? const SizedBox(
+                      height: 18,
+                      width: 18,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: Colors.black))
                   : const Text('Submit'),
             ),
           ],
