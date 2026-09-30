@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/client_model.dart';
@@ -109,11 +110,25 @@ class DashboardScreen extends StatelessWidget {
               }
               return Column(
                 children: notifs.map((n) {
+                  final time = _formatNotificationTime(n['createdAt']);
                   return Card(
                     child: ListTile(
+                      isThreeLine: time != null,
                       leading: const Icon(Icons.notifications_none, color: AppColors.primary),
                       title: Text(n['title'] ?? '', style: Theme.of(context).textTheme.titleMedium),
-                      subtitle: Text(n['message'] ?? '', style: Theme.of(context).textTheme.bodySmall),
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(n['message'] ?? '', style: Theme.of(context).textTheme.bodySmall),
+                          if (time != null) ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              time,
+                              style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                            ),
+                          ],
+                        ],
+                      ),
                     ),
                   );
                 }).toList(),
@@ -123,6 +138,17 @@ class DashboardScreen extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  String? _formatNotificationTime(dynamic createdAt) {
+    DateTime? dt;
+    if (createdAt is Timestamp) {
+      dt = createdAt.toDate();
+    } else if (createdAt is DateTime) {
+      dt = createdAt;
+    }
+    if (dt == null) return null;
+    return DateFormat('dd MMM yyyy, hh:mm a').format(dt);
   }
 
   Widget _row(String label, String value) {
