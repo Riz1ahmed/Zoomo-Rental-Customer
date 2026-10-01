@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:ebike_customer/helper.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/client_model.dart';
@@ -19,8 +20,9 @@ class DashboardScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isBlocked = client.status == ClientStatus.blocked;
     final firestore = FirestoreService();
+    final isBlocked = client.status == ClientStatus.blocked;
+    final paymentState = _paymentState(client.nextPaymentDate);
 
     return Scaffold(
       appBar: AppBar(
@@ -65,16 +67,35 @@ class DashboardScreen extends StatelessWidget {
             ),
           const SizedBox(height: 16),
           Card(
+            color: paymentState.color.withOpacity(0.18),
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Next Payment Date', style: Theme.of(context).textTheme.bodySmall),
+                  Row(
+                    children: [
+                      Icon(paymentState.icon, color: paymentState.color, size: 18),
+                      const SizedBox(width: 8),
+                      Text(
+                        paymentState.title,
+                        style: TextStyle(
+                          color: paymentState.color,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
                   const SizedBox(height: 6),
                   Text(
-                    client.nextPaymentDate != null ? DateFormat('dd MMM yyyy').format(client.nextPaymentDate!) : 'Will be notified later',
-                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                    client.nextPaymentDate != null
+                        ? DateFormat('dd MMM yyyy').format(client.nextPaymentDate!)
+                        : 'Will be notified later',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: paymentState.color,
+                    ),
                   ),
                 ],
               ),
@@ -90,7 +111,7 @@ class DashboardScreen extends StatelessWidget {
                   _row('Bike Number', client.bikeNumber),
                   _row('Battery No. 1', client.battery1),
                   _row('Battery No. 2', client.battery2),
-                  _row('Rental Amount', client.rentalAmount),
+                  //_row('Rental Amount', client.rentalAmount),
                 ],
               ),
             ),
@@ -140,6 +161,44 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
+  _PaymentState _paymentState(DateTime? nextPaymentDate) {
+    if (nextPaymentDate == null) {
+      return const _PaymentState(
+        title: 'Next Payment Date',
+        color: AppColors.primary,
+        icon: Icons.event,
+      );
+    }
+
+    final today = DateUtils.dateOnly(DateTime.now());
+    final paymentDate = DateUtils.dateOnly(nextPaymentDate);
+    final daysUntilPayment = paymentDate.difference(today).inDays;
+
+    dPrint('Next payment date: $paymentDate, Today: $today, Days until payment: $daysUntilPayment');
+
+    if (daysUntilPayment < 0) {
+      return const _PaymentState(
+        title: 'Payment due',
+        color: AppColors.danger,
+        icon: Icons.error_outline,
+      );
+    }
+
+    if (daysUntilPayment <= 3) {
+      return const _PaymentState(
+        title: 'Payment due soon',
+        color: AppColors.warning,
+        icon: Icons.warning_amber_rounded,
+      );
+    }
+
+    return const _PaymentState(
+      title: 'Next Payment Date',
+      color: AppColors.primary,
+      icon: Icons.event,
+    );
+  }
+
   String? _formatNotificationTime(dynamic createdAt) {
     DateTime? dt;
     if (createdAt is Timestamp) {
@@ -164,4 +223,16 @@ class DashboardScreen extends StatelessWidget {
       ),
     );
   }
+}
+
+class _PaymentState {
+  final String title;
+  final Color color;
+  final IconData icon;
+
+  const _PaymentState({
+    required this.title,
+    required this.color,
+    required this.icon,
+  });
 }
